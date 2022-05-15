@@ -36,31 +36,26 @@ int main(int argc, char* argv[]){
         cell.push_back(v);
         total_area+=_area;
     }
-    is2way = (ceil(total_area*0.55) == (float)max_area);
+    is2way = (abs(max_area - total_area*0.55) < 1);
     //2-way partition
     if(is2way){
-        int group_id = 0;
         int group[num_cell];
         int gain[num_cell];
         bool lock[num_cell];
         int cost = 0;
         //partition
-        int sum=0;
         int area[2] = {0};
         for(int i=0;i<num_cell;i++){
-            if(sum+cell_size[i]>max_area){
-                area[0] = sum;
-                sum = 0;
-                group_id++;
-                if(group_id>2){
-                    throw exception();
-                }
+            if(area[0]+cell_size[i]<max_area){
+                area[0] += cell_size[i];
+                group[i]=0;
             }
-            group[i]=group_id;
-            sum+=cell_size[i];
+            else{
+                area[1] += cell_size[i];
+                group[i]=1;
+            }
             lock[i] = false;
         }
-        area[1] = sum;
 
         getline(in_file, _); //.net
         in_file>>num_net; 
@@ -82,6 +77,17 @@ int main(int argc, char* argv[]){
             v.push_back(_net[1]);
             net.push_back(v);
         }
+
+	//compute cost
+	cost = 0;
+	for(int i=0;i<num_net;i++){
+	    if(net[i][0].size() && net[i][1].size()){
+		cost+=1;
+	    }
+	}
+	cout<<"BEFORE MOVE:"<<cost<<endl;
+
+
         while(1){
             vector<int> G;
             vector<int> move;
@@ -145,14 +151,6 @@ int main(int argc, char* argv[]){
                 G.push_back(max);
                 move.push_back(idx);
             }
-            //compute cost
-            //int cost = 0;
-            //for(int i=0;i<num_net;i++){
-            //    if(net[i][0].size() && net[i][1].size()){
-            //        cost+=1;
-            //    }
-            //}
-            //cout<<"BEFORE MOVE:"<<cost<<endl;
 
             int max = 0;
             int reduce = 0;
@@ -199,7 +197,51 @@ int main(int argc, char* argv[]){
     }
     //k-way partition
     else{
-        cout<<total_area<<endl<<max_area<<endl;
+        //cout<<total_area<<endl<<max_area<<endl;
+        int group_id = 0;
+        int sum = 0;
+        int group[num_cell];
+        int cost = 0;
+        for(int i=0;i<num_cell;i++){
+            if(sum + cell_size[i] > max_area){
+                group_id += 1;
+                sum = 0;
+            }
+            sum += cell_size[i];
+            group[i] = group_id;
+        }
+
+        getline(in_file, _); //.net
+        in_file>>num_net; 
+        getline(in_file, _);
+        for(int i=0;i<num_net;i++){
+            int n;
+            int span[group_id+1];
+            for(int i=0;i<group_id+1;i++)
+                span[i] = 0;
+            int cnt = 0;
+            in_file>>n;
+            getline(in_file, _);
+            for(int j=0;j<n;j++){
+                int _cell;
+                in_file>>_cell;
+                if(!span[group[_cell]]){
+                    cnt+=1;
+                    span[group[_cell]] = 1;
+                }
+            }
+            cost+=(cnt-1)*(cnt-1);
+            getline(in_file, _);
+        }
+
+        ofstream out_file;
+        out_file.open(argv[2]);    //open <.out file>
+        out_file << cost << endl;
+        out_file << group_id+1 <<endl;
+        for(auto i:group){
+            out_file << i << endl;
+        }
+        out_file.close();
 
     }
     
