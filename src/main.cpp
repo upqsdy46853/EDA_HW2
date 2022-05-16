@@ -44,16 +44,9 @@ int main(int argc, char* argv[]){
         bool lock[num_cell];
         int cost = 0;
         //partition
-        int area[2] = {0};
+        int area[2] = {total_area, 0};
         for(int i=0;i<num_cell;i++){
-            if(area[0]+cell_size[i]<max_area){
-                area[0] += cell_size[i];
-                group[i]=0;
-            }
-            else{
-                area[1] += cell_size[i];
-                group[i]=1;
-            }
+            group[i]=0;
             lock[i] = false;
         }
 
@@ -78,27 +71,120 @@ int main(int argc, char* argv[]){
             net.push_back(v);
         }
 
-	//compute cost
-	cost = 0;
-	for(int i=0;i<num_net;i++){
-	    if(net[i][0].size() && net[i][1].size()){
-		cost+=1;
-	    }
-	}
-	cout<<"BEFORE MOVE:"<<cost<<endl;
+        //compute cost
+        cost = 0;
+        for(int i=0;i<num_net;i++){
+            if(net[i][0].size() && net[i][1].size()){
+                cost+=1;
+            }
+        }
+        cout<<"BEFORE MOVE:"<<cost<<endl;
 
+        //init
+        vector<int> move;
+        vector<vector<set<int>>> tmp_net = net; 
+        int tmp_area[2];
+        int tmp_group[num_cell];
+        for(int i=0;i<num_cell;i++){
+            tmp_group[i] = group[i];
+        }
+        tmp_area[0] = area[0];
+        tmp_area[1] = area[1];
+        //initialization
+        for(int i=0;i<num_cell;i++){
+            int score = 0;
+            for(auto _net:cell[i]){
+                if(tmp_net[_net][tmp_group[i]].size() == 1)
+                    score+=1;
+                if(tmp_net[_net][1-tmp_group[i]].size() == 0)
+                    score-=1;
+            }
+            gain[i] = score;
+        }
+
+        ////update_Gain
+        for(int t=0;t<num_cell;t++){
+            int max = -1000000;
+            int idx = -1;
+            int max_cell_area = -1;
+            //find max gain
+            for(int i=0;i<num_cell;i++){
+                if(!lock[i] && gain[i]>=max && tmp_area[0]>=max_area){
+                    if(gain[i]==max){
+                        if(cell_size[i]>max_cell_area){
+                            max_cell_area = cell_size[i];
+                            max=gain[i];
+                            idx = i;
+                        }
+                    }
+                    else{
+                        max_cell_area = cell_size[i];
+                        max=gain[i];
+                        idx = i;
+                    }
+                }
+            }
+            if(idx==-1)
+                break;
+            for(auto i:cell[idx]){
+                if(tmp_net[i][1-tmp_group[idx]].size() == 0){
+                    for(auto c:tmp_net[i][tmp_group[idx]])
+                        gain[c]++;
+                }
+                else if(tmp_net[i][1-tmp_group[idx]].size() == 1){
+                    for(auto c:tmp_net[i][1-tmp_group[idx]])
+                        gain[c]--;
+                }
+                tmp_net[i][1-tmp_group[idx]].insert(idx);
+                tmp_net[i][tmp_group[idx]].erase(idx);
+                if(tmp_net[i][tmp_group[idx]].size() == 0){
+                    for(auto c:tmp_net[i][1-tmp_group[idx]])
+                        gain[c]--;
+                }
+                else if(tmp_net[i][tmp_group[idx]].size() == 1){
+                    for(auto c:tmp_net[i][tmp_group[idx]])
+                        gain[c]++;
+                }
+            }
+            tmp_group[idx] = 1 - tmp_group[idx];
+            tmp_area[tmp_group[idx]] += cell_size[idx];
+            tmp_area[1-tmp_group[idx]] -= cell_size[idx];
+            lock[idx] = true;
+            move.push_back(idx);
+        }
+        int max_idx = move.size();
+
+        for(int t=0;t<max_idx;t++){
+            int idx = move[t];
+            for(auto i:cell[idx]){
+                net[i][1-group[idx]].insert(idx);
+                net[i][group[idx]].erase(idx);
+            }
+            group[idx] = 1 - group[idx];
+            area[group[idx]] += cell_size[idx];
+            area[1-group[idx]] -= cell_size[idx];
+        }
+        cost = 0;
+        for(int i=0;i<num_net;i++){
+            if(net[i][0].size() && net[i][1].size()){
+                cost+=1;
+            }
+        }
+        cout<<"INIT cost:"<<cost<<endl;
+        //cout<<area[0]<<endl<<area[1]<<endl;
 
         while(1){
             vector<int> G;
             vector<int> move;
-            vector<vector<set<int>>> tmp_net = net; int tmp_area[2];
+            vector<vector<set<int>>> tmp_net = net; 
+            int tmp_area[2];
             int tmp_group[num_cell];
             for(int i=0;i<num_cell;i++){
                 tmp_group[i] = group[i];
+                lock[i] = false;
             }
             tmp_area[0] = area[0];
             tmp_area[1] = area[1];
-            tmp_net = net;
             //initialization
             for(int i=0;i<num_cell;i++){
                 int score = 0;
@@ -116,10 +202,18 @@ int main(int argc, char* argv[]){
                 int max = -1000000;
                 int idx = -1;
                 //find max gain
+                int max_sum_cell = -1;
                 for(int i=0;i<num_cell;i++){
-                    if(!lock[i] && gain[i]>max && cell_size[i]+tmp_area[1-tmp_group[i]]<max_area){
-                        max=gain[i];
-                        idx = i;
+                    if(!lock[i] && gain[i]>=max && cell_size[i]+tmp_area[1-tmp_group[i]]<max_area){
+                        int sum_cell = 0;
+                        for(auto n:cell[i]){
+                            sum_cell += tmp_net[n][1-tmp_group[i]].size();
+                        }
+                        if((gain[i]==max && sum_cell>max_sum_cell)|| gain[i]>max){
+                            max_sum_cell = sum_cell;
+                            max=gain[i];
+                            idx = i;
+                        }
                     }
                 }
                 if(idx==-1)
@@ -185,64 +279,18 @@ int main(int argc, char* argv[]){
                 }
             }
             cout<<"AFTER MOVE:"<<cost<<endl;
-        }
-        ofstream out_file;
-        out_file.open(argv[2]);    //open <.out file>
-        out_file << cost << endl;
-        out_file << 2 <<endl;
-        for(auto i:group){
-            out_file << i << endl;
-        }
-        out_file.close();
-    }
-    //k-way partition
-    else{
-        //cout<<total_area<<endl<<max_area<<endl;
-        int group_id = 0;
-        int sum = 0;
-        int group[num_cell];
-        int cost = 0;
-        for(int i=0;i<num_cell;i++){
-            if(sum + cell_size[i] > max_area){
-                group_id += 1;
-                sum = 0;
-            }
-            sum += cell_size[i];
-            group[i] = group_id;
+            //cout<<area[0]<<endl<<area[1]<<endl;
         }
 
-        getline(in_file, _); //.net
-        in_file>>num_net; 
-        getline(in_file, _);
-        for(int i=0;i<num_net;i++){
-            int n;
-            int span[group_id+1];
-            for(int i=0;i<group_id+1;i++)
-                span[i] = 0;
-            int cnt = 0;
-            in_file>>n;
-            getline(in_file, _);
-            for(int j=0;j<n;j++){
-                int _cell;
-                in_file>>_cell;
-                if(!span[group[_cell]]){
-                    cnt+=1;
-                    span[group[_cell]] = 1;
-                }
-            }
-            cost+=(cnt-1)*(cnt-1);
-            getline(in_file, _);
-        }
 
-        ofstream out_file;
-        out_file.open(argv[2]);    //open <.out file>
-        out_file << cost << endl;
-        out_file << group_id+1 <<endl;
-        for(auto i:group){
-            out_file << i << endl;
-        }
-        out_file.close();
-
+        //ofstream out_file;
+        //out_file.open(argv[2]);    //open <.out file>
+        //out_file << cost << endl;
+        //out_file << 2 <<endl;
+        //for(auto i:group){
+            //out_file << i << endl;
+        //}
+        //out_file.close();
     }
     
 
