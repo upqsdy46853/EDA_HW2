@@ -7,21 +7,28 @@ using namespace std;
 #define MINUS_INF -100000000
 int main(int argc, char* argv[]){
     bool is2way;
-    vector<int> cell_size;
-    vector<vector<set<int>>> net;
-    vector<vector<int>> cell;
     int max_area;
     int num_cell;
     int num_net;
+    int cost;
     string _;
     ifstream in_file;
+    vector<int> cell_size;
+    vector<vector<int>> cell;
+
     in_file.open(argv[1]);
 
     in_file >> max_area;
     in_file >> _;
-
     in_file >> num_cell;
 
+    int gain[num_cell];
+    int group[num_cell];
+    bool lock[num_cell];
+    for(int i=0;i<num_cell;i++){
+        group[i]=0;
+        lock[i] = false;
+    }
     int total_area = 0;
     for(int i=0;i<num_cell;i++){
         int _area;
@@ -36,17 +43,9 @@ int main(int argc, char* argv[]){
 
     //2-way partition
     if(is2way){
-        int group[num_cell];
-        int gain[num_cell];
-        bool lock[num_cell];
-        int cost;
         //partition
+        vector<vector<set<int>>> net;
         int area[2] = {total_area, 0};
-        for(int i=0;i<num_cell;i++){
-            group[i]=0;
-            lock[i] = false;
-        }
-
         in_file>>_;
         in_file>>num_net; 
         for(int i=0;i<num_net;i++){
@@ -72,7 +71,7 @@ int main(int argc, char* argv[]){
                 cost+=1;
             }
         }
-        cout<<"BEFORE MOVE:"<<cost<<endl;
+        //cout<<"BEFORE MOVE:"<<cost<<endl;
 
         //partition to two parts
         vector<int> move;
@@ -97,13 +96,13 @@ int main(int argc, char* argv[]){
         }
 
         ////update_Gain
-        for(int t=0;t<num_cell;t++){
+        while(tmp_area[0]>=max_area){
             int max = MINUS_INF;
             int idx = -1;
             int max_cell_area = -1;
             //find max gain
             for(int i=0;i<num_cell;i++){
-                if(!lock[i] && gain[i]>=max && tmp_area[0]>=max_area){
+                if(!lock[i] && gain[i]>=max){
                     if((gain[i]==max && cell_size[i]>max_cell_area) || gain[i]>max){
                             max_cell_area = cell_size[i];
                             max=gain[i];
@@ -159,7 +158,7 @@ int main(int argc, char* argv[]){
                 cost+=1;
             }
         }
-        cout<<"INIT cost:"<<cost<<endl;
+        //cout<<"INIT cost:"<<cost<<endl;
 
         //FM algo
         while(1){
@@ -264,7 +263,7 @@ int main(int argc, char* argv[]){
                     cost+=1;
                 }
             }
-            cout<<"AFTER MOVE:"<<cost<<endl;
+            //cout<<"AFTER MOVE:"<<cost<<endl;
         }
 
 
@@ -272,6 +271,49 @@ int main(int argc, char* argv[]){
         out_file.open(argv[2]);
         out_file << cost << endl;
         out_file << 2 <<endl;
+        for(auto i:group){
+            out_file << i << endl;
+        }
+        out_file.close();
+    }
+    else{
+        int group_id = 0;
+        int sum = 0;
+        int group[num_cell];
+        int cost = 0;
+        for(int i=0;i<num_cell;i++){
+            if(sum + cell_size[i] >= max_area){
+                group_id += 1;
+                sum = 0;
+            }
+            sum += cell_size[i];
+            group[i] = group_id;
+        }
+
+        in_file>>_;
+        in_file>>num_net; 
+        for(int i=0;i<num_net;i++){
+            int n;
+            int span[group_id+1];
+            for(int i=0;i<group_id+1;i++)
+                span[i] = 0;
+            int cnt = 0;
+            in_file>>n;
+            for(int j=0;j<n;j++){
+                int _cell;
+                in_file>>_cell;
+                if(!span[group[_cell]]){
+                    cnt+=1;
+                    span[group[_cell]] = 1;
+                }
+            }
+            cost+=(cnt-1)*(cnt-1);
+        }
+
+        ofstream out_file;
+        out_file.open(argv[2]);    //open <.out file>
+        out_file << cost << endl;
+        out_file << group_id+1 <<endl;
         for(auto i:group){
             out_file << i << endl;
         }

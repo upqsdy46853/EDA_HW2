@@ -16,9 +16,6 @@ int main(int argc, char* argv[]){
 		in_file >> group_id;
 		group.push_back(group_id);
 	}
-	//for(auto i:group){
-	//	cout<<i<<endl;	
-	//}
 	in_file.close();
 
 	in_file.open(argv[2]);
@@ -42,20 +39,30 @@ int main(int argc, char* argv[]){
 	for(int i=0;i<num_net;i++){
 		int n;
 		in_file >> n;
-		bool in_a = false;
-		bool in_b = false;
+		bool in[k];
+		int span = 0;
+		for(int i=0;i<k;i++){
+			in[i] = false;
+		}
 		for(int j=0;j<n;j++){
 			int cell_idx;
 			in_file >> cell_idx;
-			if(group[cell_idx]==0){
-				in_a = true;
-			}
-			else{
-				in_b = true;
+			if(!in[group[cell_idx]]){
+				in[group[cell_idx]] = true;
+				span++;
 			}
 		}
-		if(in_a && in_b){
-			golden += 1;		
+		golden += (span-1)*(span-1);		
+	}
+	int total_area[k];
+	for(int i=0;i<k;i++){
+		total_area[i] = 0;
+	}
+	for(int i=0;i<area.size();i++){
+		total_area[group[i]] += area[i];
+		if(total_area[group[i]]>area_cons){
+			cout<<"FAIL"<<endl;
+			return 0;
 		}
 	}
 	if (cost == golden){
